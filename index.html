@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>不会必应么</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="https://cn.bing.com/favicon.ico">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,6 +16,7 @@
             margin: 0;
             padding: 0;
             color: #fff;
+            transition: background-color 0.4s;
         }
         .header {
             position: absolute;
@@ -31,6 +33,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
+            z-index: 2;
         }
         .search-box, .link-box {
             position: relative;
@@ -76,10 +79,16 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 80px;
-            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
-            pointer-events: none;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
             z-index: 1;
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+        }
+        .overlay.active {
+            opacity: 1;
+            pointer-events: auto;
         }
         #tutorial {
             margin-top: 20px;
@@ -97,14 +106,28 @@
                 width: 90%;
             }
         }
+        .circle {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background-color: rgba(0, 120, 212, 0.3);
+            border-radius: 50%;
+            z-index: 3;
+            opacity: 1;
+            transition: transform 0.6s ease, opacity 0.6s ease;
+        }
+        .circle.fade-out {
+            transform: scale(0);
+            opacity: 0;
+        }
     </style>
 </head>
 <body>
-    <div class="overlay"></div>
+    <div class="overlay" id="background-overlay"></div>
     <div class="header">不会必应么</div>
     <div class="container">
         <div class="search-box">
-            <input type="text" id="search-box" placeholder="输入搜索内容">
+            <input type="text" id="search-box" placeholder="输入搜索内容" onfocus="darkenBackground()" onblur="restoreBackground()">
             <button id="search-button" onclick="generateLink()">
                 <i class="fas fa-search"></i>
             </button>
@@ -144,6 +167,7 @@
             function typeCharacter() {
                 if (currentIndex < query.length) {
                     searchBox.value += query[currentIndex];
+                    searchBox.focus();
                     currentIndex++;
                     setTimeout(typeCharacter, 100);
                 } else {
@@ -154,12 +178,40 @@
             typeCharacter();
         }
 
-        function simulateSearch(query) {
+        function showCircle(element, callback) {
+            const circle = document.createElement('div');
+            circle.className = 'circle';
+            document.body.appendChild(circle);
+            const rect = element.getBoundingClientRect();
+            circle.style.top = `${rect.top + rect.height / 2 - 50}px`;
+            circle.style.left = `${rect.left + rect.width / 2 - 50}px`;
             setTimeout(() => {
-                simulateTyping(query, () => {
+                circle.classList.add('fade-out');
+                setTimeout(() => {
+                    document.body.removeChild(circle);
+                    if (callback) callback();
+                }, 600);
+            }, 100);
+        }
+
+        function simulateSearch(query) {
+            const searchBox = document.getElementById('search-box');
+            const searchButton = document.getElementById('search-button');
+            setTimeout(() => {
+                searchBox.focus();
+                darkenBackground();
+                showCircle(searchBox, () => {
                     setTimeout(() => {
-                        window.location.href = `https://cn.bing.com/search?q=${encodeURIComponent(query)}`;
-                    }, 500);
+                        simulateTyping(query, () => {
+                            setTimeout(() => {
+                                showCircle(searchButton, () => {
+                                    setTimeout(() => {
+                                        window.location.href = `https://cn.bing.com/search?q=${encodeURIComponent(query)}`;
+                                    }, 500);
+                                });
+                            }, 500);
+                        });
+                    }, 1000);
                 });
             }, 1000);
         }
@@ -175,6 +227,25 @@
                 tutorial.textContent = `1. 填写搜索内容\n2. 点击搜索按钮\n3. 点击复制链接`;
             }
         }
+
+        function darkenBackground() {
+            document.getElementById('background-overlay').classList.add('active');
+        }
+
+        function restoreBackground() {
+            const searchBox = document.getElementById('search-box');
+            if (!searchBox.value) {
+                document.getElementById('background-overlay').classList.remove('active');
+            }
+        }
+
+        document.getElementById('search-box').addEventListener('input', function() {
+            if (this.value) {
+                darkenBackground();
+            } else {
+                restoreBackground();
+            }
+        });
     </script>
 </body>
 </html>
